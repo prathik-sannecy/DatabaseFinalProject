@@ -14,5 +14,4 @@ def parseNBAJsonFile(inputFileName, outputFileName):
                 out.write(splitTable[row].replace("]", "").strip(",").strip("}") + "\n")
 
 
-parseNBAJsonFile("DataSets/leaguedashplayerstats.json", "Outputs/outplayer.csv")
-parseNBAJsonFile("DataSets/leaguedashteamstats.json", "Outputs/outteam.csv")
+parseNBAJsonFile("DataSets/leaguedashteamstats_scoring.json", "Outputs/outteam_scoring.csv")
