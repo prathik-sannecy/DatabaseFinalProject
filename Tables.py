@@ -38,11 +38,11 @@ class Table:
 
     # Some Names have a ' in them which is slightly problematic
     def safeQuery(self, query):
-        q = re.sub("(\w)\'(\w)", "\1\2", query)
+        q = re.sub("(\w)\'(\s?\w)", "\1\2", query)
         return self.db.execute(q)
 
     def create(self):
-        self.safeQuery("DROP TABLE IF EXISTS {}.{};".format(self.schemaName, self.name))
+        self.safeQuery("DROP TABLE IF EXISTS {}.{} CASCADE;".format(self.schemaName, self.name))
         self.con.commit()
         ret = self.safeQuery(self.createQuery())
         self.con.commit()
@@ -107,17 +107,86 @@ class CoachTable (Table):
         self.constraints = []
         self.csvNames = ["NAME", "EXP", "EXP"]
 
+# Player table
+class PlayerTable (Table):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "player"
+        self.params = [Attribute("p_name", "varchar(255)")]
+        #self.params.append(Attribute("position", "varchar(10)"))
+        self.params.append(Attribute("age", "int"))
+        self.primaryKey = "p_name"
+        self.constraints = []
+        #self.csvNames = ["PLAYER_NAME", "POS", "AGE"]
+        self.csvNames = ["PLAYER_NAME", "AGE"]
+
+# Player table
+class TeamTable (Table):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "team"
+        self.params = [Attribute("t_name", "varchar(255)")]
+        self.primaryKey = "t_name"
+        self.constraints = []
+        self.csvNames = ["TEAM_NAME"]
+
+# Player table
+class TeamRecordTable (Table):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "teamRecord"
+        self.params = [Attribute("t_name", "varchar(255)")]
+        self.params.append(Attribute("gp", "int"))
+        self.params.append(Attribute("wins", "int"))
+        self.params.append(Attribute("losses", "int"))
+        self.params.append(Attribute("year", "int"))
+        self.primaryKey = "t_name, year"
+        self.constraints = ["FOREIGN KEY (t_name) REFERENCES {}.team(t_name)".format(self.schemaName)]
+        self.csvNames = ["TEAM_NAME", "GP", "W", "L"]
+
+    def insertFromFile(self, filePath):
+        inputFile = csv.DictReader(open(filePath), delimiter=',')
+        for row in inputFile:
+            values = []
+            for k in self.csvNames:
+                values.append(row[k])
+            values += ["2019"]
+            self.insert(values, False)
+        self.con.commit()
+
+# Player table
+class TeamAttTable (TeamRecordTable):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "teamAttendence"
+        self.params = [Attribute("t_name", "varchar(255)")]
+        self.params.append(Attribute("attendence_total", "int"))
+        self.params.append(Attribute("year", "int"))
+        self.primaryKey = "t_name, year"
+        self.constraints = ["FOREIGN KEY (t_name) REFERENCES {}.team(t_name)".format(self.schemaName)]
+        self.csvNames = ["TEAM", "TOTAL"]
+
 
 con = p.connect(host=hostName, database=dbName, user=userName, password=password)
 db = con.cursor()
 
-test = TestTable(db, con)
-ret = test.create()
-test.insert(["ABC", 2])
+data = {}
+data[CoachTable] = "outcoaches.csv"
+data[PlayerTable] = "outplayer.csv"
+data[TeamTable] = "outteam.csv"
 
-coach = CoachTable(db, con)
-ret = coach.create()
-coach.insertFromFile("./Outputs/outcoaches")
+for tableType, fileName in data.items():
+    table = tableType(db, con)
+    ret = table.create()
+    table.insertFromFile("./Outputs/" + fileName)
+
+data = {}
+data[TeamRecordTable] = "outteam.csv"
+data[TeamAttTable] = "outnba_team_annual_attendance2018.csv"
+for tableType, fileName in data.items():
+    table = tableType(db, con)
+    ret = table.create()
+    table.insertFromFile("./Outputs/" + fileName)
 
 db.close()
 con.close()
