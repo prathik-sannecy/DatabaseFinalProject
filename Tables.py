@@ -64,8 +64,11 @@ class Table:
         formatValues = []
         for param, val in zip(self.params, values):
             pVal = str(val)
+            #if param.type != "int" and param.type != "timestamp":
             if param.type != "int":
                 pVal = "'{}'".format(pVal)
+            if param.type == "timestamp":
+                pVal = "timestamp " + re.sub("\/", "-", pVal)
             formatValues.append(pVal)
 
         sql = ",".join(formatValues)
@@ -167,9 +170,24 @@ class TeamAttTable (TeamRecordTable):
         self.csvNames = ["TEAM", "TOTAL"]
 
 
+# Player table
+class GameTable (Table):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "game"
+        self.params = [Attribute("home_team", "varchar(255)")]
+        self.params.append(Attribute("away_team", "varchar(255)"))
+        self.params.append(Attribute("date", "timestamp"))
+        self.params.append(Attribute("location", "varchar(255)"))
+        self.params.append(Attribute("result", "varchar(255)"))
+        self.primaryKey = "home_team,away_team,date"
+        self.constraints = ["FOREIGN KEY (home_team) REFERENCES {}.team(t_name)".format(self.schemaName)]
+        self.constraints.append("FOREIGN KEY (away_team) REFERENCES {}.team(t_name)".format(self.schemaName))
+        self.csvNames = ["Home Team", "Away Team", "Date", "Result"]
 con = p.connect(host=hostName, database=dbName, user=userName, password=password)
 db = con.cursor()
-
+db.execute("SET datestyle = dmy")
+con.commit()
 data = {}
 data[CoachTable] = "outcoaches.csv"
 data[PlayerTable] = "outplayer.csv"
@@ -183,6 +201,8 @@ for tableType, fileName in data.items():
 data = {}
 data[TeamRecordTable] = "outteam.csv"
 data[TeamAttTable] = "outnba_team_annual_attendance2018.csv"
+data[GameTable] = "outnbaschedule.csv"
+
 for tableType, fileName in data.items():
     table = tableType(db, con)
     ret = table.create()
