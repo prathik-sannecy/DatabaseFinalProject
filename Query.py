@@ -9,6 +9,8 @@ hostName = "dbclass.cs.pdx.edu"
 queries = []
 queries.append(("Display Teams", "SELECT t_name as teams from FinalProject.team"))
 queries.append(("Team with highest Attendence", "SELECT t_name as team, attendence_total from FinalProject.teamAttendence where attendence_total >=(select max(attendence_total) from FinalProject.teamAttendence)"))
+queries.append(("Best Offenses", "SELECT * FROM FinalProject.TEAMStatRanker('OFF_RATING')"))
+queries.append(("Best 3 point shooter", "SELECT * FROM FinalProject.PlayerStatRanker('FG3M')"))
 numQueries = len(queries)
 con = p.connect(host=hostName, database=dbName, user=userName, password=password)
 db = con.cursor()

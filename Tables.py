@@ -333,5 +333,37 @@ for tableType, fileName in data.items():
     ret = table.create()
     table.insertFromFile("./Outputs/" + fileName)
 
+
+pProcedure = """
+CREATE OR REPLACE FUNCTION FinalProject.PlayerStatRanker(STAT VARCHAR)
+RETURNS TABLE(
+    player VARCHAR,
+    statistic VARCHAR,
+    rank BIGINT
+)
+AS $$
+BEGIN RETURN QUERY
+    SELECT P_NAME, player_stat_type, ROW_NUMBER() OVER(ORDER BY statvalue DESC) AS Rank from FinalProject.playerstatrel where player_stat_type = STAT and statvalue > 0;
+END;
+$$ LANGUAGE 'plpgsql'"""
+
+tProcedure = """
+CREATE OR REPLACE FUNCTION FinalProject.TEAMStatRanker(STAT VARCHAR)
+RETURNS TABLE(
+    player VARCHAR,
+    statistic VARCHAR,
+    rank BIGINT
+)
+AS $$
+BEGIN RETURN QUERY
+    SELECT t_NAME, team_stat_type, ROW_NUMBER() OVER(ORDER BY statvalue DESC) AS Rank from FinalProject.teamStatRel where team_stat_type = STAT and statvalue > 0;
+END;
+$$ LANGUAGE 'plpgsql'"""
+storeProcedures = [pProcedure, tProcedure]
+for proc in storeProcedures:
+    db.execute(proc)
+    con.commit();
+
 db.close()
 con.close()
+    
