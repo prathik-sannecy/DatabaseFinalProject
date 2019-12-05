@@ -1,6 +1,7 @@
 import psycopg2 as p
 import csv
 import re
+from TeamNames import abbribs 
 
 userName = "f19wdb14"
 password = "v@Nnd9ae5d"
@@ -8,6 +9,9 @@ dbName = "f19wdb14.FinalProject"
 dbName = "f19wdb14"
 hostName = "dbclass.cs.pdx.edu"
 
+playerStats = "FGM   FGA FG_PCT  FG3M    FG3A    FG3_PCT FTM FTA FT_PCT  OREB    DREB    REB AST TOV STL BLK BLKA    PF  PFD PTS".split()
+
+teamStats = "E_OFF_RATING    OFF_RATING  E_DEF_RATING    DEF_RATING  E_NET_RATING    NET_RATING  AST_PCT AST_TO  AST_RATIO   OREB_PCT    DREB_PCT    REB_PCT TM_TOV_PCT  EFG_PCT TS_PCT  E_PACE  PACE".split()
 # Holds information for a column in a Table
 class Attribute:
     def __init__(self, name, type, isNullable=True, isUnique = False,):
@@ -170,7 +174,7 @@ class TeamAttTable (TeamRecordTable):
         self.csvNames = ["TEAM", "TOTAL"]
 
 
-# Player table
+# Game table
 class GameTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
@@ -184,6 +188,121 @@ class GameTable (Table):
         self.constraints = ["FOREIGN KEY (home_team) REFERENCES {}.team(t_name)".format(self.schemaName)]
         self.constraints.append("FOREIGN KEY (away_team) REFERENCES {}.team(t_name)".format(self.schemaName))
         self.csvNames = ["Home Team", "Away Team", "Date", "Result"]
+
+# Game table
+class CoachTeamRelTable (Table):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "coachTeamRel"
+        self.params = [Attribute("c_name", "varchar(255)")]
+        self.params.append(Attribute("t_name", "varchar(255)"))
+        self.primaryKey = "t_name,c_name"
+        self.constraints = ["FOREIGN KEY (t_name) REFERENCES {}.team(t_name)".format(self.schemaName)]
+        self.constraints.append("FOREIGN KEY (c_name) REFERENCES {}.coach(c_name)".format(self.schemaName))
+        self.csvNames = ["NAME", "TEAM"]
+
+# Player Team table
+class PlayerTeamRelTable (Table):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "playerTeamRel"
+        self.params = [Attribute("t_name", "varchar(255)")]
+        self.params.append(Attribute("p_name", "varchar(255)"))
+        self.params.append(Attribute("player_salary", "int"))
+        self.primaryKey = "t_name,p_name"
+        self.constraints = ["FOREIGN KEY (t_name) REFERENCES {}.team(t_name)".format(self.schemaName)]
+        self.constraints.append("FOREIGN KEY (p_name) REFERENCES {}.player(p_name)".format(self.schemaName))
+        self.csvNames = ["Player", "Tm", "season17_18"]
+    # Parses a CSV file and assumes that each row is a record
+    def insertFromFile(self, filePath):
+        inputFile = csv.DictReader(open(filePath), delimiter=',')
+        for row in inputFile:
+            values = []
+            for k in self.csvNames:
+                if k == "Tm":
+                    k = abbribs [k]
+                values.append(row[k])
+            self.insert(values, False)
+
+# Player Team table
+class PlayerStatRelTable (Table):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "playerStatRel"
+        self.params = [Attribute("p_name", "varchar(255)")]
+        self.params.append(Attribute("player_stat_type", "varchar(255)"))
+        self.params.append(Attribute("statValue", "float(24)"))
+        self.primaryKey = "p_name,player_stat_type"
+        self.constraints = ["FOREIGN KEY (p_name) REFERENCES {}.player(p_name)".format(self.schemaName)]
+        self.constraints.append("FOREIGN KEY (player_stat_type) REFERENCES {}.playerstat(player_stat_type)".format(self.schemaName))
+        self.csvNames = ["PLAYER_NAME"]
+    
+    # Parses a CSV file and assumes that each row is a record
+    def insertFromFile(self, filePath):
+        inputFile = csv.DictReader(open(filePath), delimiter=',')
+        for row in inputFile:
+            for stat in playerStats:
+                values = []
+                for k in self.csvNames:
+                    values.append(row[k])
+                values.append(stat)
+                values.append(row[stat])
+                self.insert(values, False)
+
+# Player Team table
+class TeamStatRelTable (Table):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "teamStatRel"
+        self.params = [Attribute("t_name", "varchar(255)")]
+        self.params.append(Attribute("team_stat_type", "varchar(255)"))
+        self.params.append(Attribute("statValue", "float(24)"))
+        self.primaryKey = "t_name,team_stat_type"
+        self.constraints = ["FOREIGN KEY (t_name) REFERENCES {}.team(t_name)".format(self.schemaName)]
+        self.constraints.append("FOREIGN KEY (team_stat_type) REFERENCES {}.teamstat(team_stat_type)".format(self.schemaName))
+        self.csvNames = ["TEAM_NAME"]
+    
+    # Parses a CSV file and assumes that each row is a record
+    def insertFromFile(self, filePath):
+        inputFile = csv.DictReader(open(filePath), delimiter=',')
+        for row in inputFile:
+            for stat in teamStats:
+                values = []
+                for k in self.csvNames:
+                    values.append(row[k])
+                values.append(stat)
+                values.append(row[stat])
+                self.insert(values, False)
+
+# Player Team table
+class PlayerStatTable (Table):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "playerstat"
+        self.params = [Attribute("player_stat_type", "varchar(255)")]
+        self.primaryKey = "player_stat_type"
+        self.constraints = []
+    # Parses a CSV file and assumes that each row is a record
+    def insertFromFile(self, filePath):
+        for stat in playerStats:
+            self.insert([stat], False)
+
+# Player Team table
+class TeamStatTable (Table):
+    def __init__(self, db, con):
+        Table.__init__(self, db, con)
+        self.name = "teamStat"
+        self.params = [Attribute("team_stat_type", "varchar(255)")]
+        self.primaryKey = "team_stat_type"
+        self.constraints = []
+    # Parses a CSV file and assumes that each row is a record
+    def insertFromFile(self, filePath):
+        for stat in teamStats:
+            self.insert([stat], False)
+
+con = p.connect(host=hostName, database=dbName, user=userName, password=password)
+db = con.cursor()
+
 con = p.connect(host=hostName, database=dbName, user=userName, password=password)
 db = con.cursor()
 db.execute("SET datestyle = dmy")
@@ -192,6 +311,8 @@ data = {}
 data[CoachTable] = "outcoaches.csv"
 data[PlayerTable] = "outplayer.csv"
 data[TeamTable] = "outteam.csv"
+data[PlayerStatTable] = ""
+data[TeamStatTable] = ""
 
 for tableType, fileName in data.items():
     table = tableType(db, con)
@@ -202,8 +323,12 @@ data = {}
 data[TeamRecordTable] = "outteam.csv"
 data[TeamAttTable] = "outnba_team_annual_attendance2018.csv"
 data[GameTable] = "outnbaschedule.csv"
+data[CoachTeamRelTable] = "outcoaches.csv"
+data[PlayerStatRelTable] = "outplayer.csv"
+data[TeamStatRelTable] = "outteam.csv"
 
 for tableType, fileName in data.items():
+    print(fileName)
     table = tableType(db, con)
     ret = table.create()
     table.insertFromFile("./Outputs/" + fileName)
