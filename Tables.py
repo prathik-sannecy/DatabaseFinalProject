@@ -1,7 +1,7 @@
 import psycopg2 as p
 import csv
 import re
-from TeamNames import abbribs 
+from TeamNames import abbribs
 
 userName = "f19wdb14"
 password = "v@Nnd9ae5d"
@@ -12,6 +12,7 @@ hostName = "dbclass.cs.pdx.edu"
 playerStats = "FGM   FGA FG_PCT  FG3M    FG3A    FG3_PCT FTM FTA FT_PCT  OREB    DREB    REB AST TOV STL BLK BLKA    PF  PFD PTS".split()
 
 teamStats = "E_OFF_RATING    OFF_RATING  E_DEF_RATING    DEF_RATING  E_NET_RATING    NET_RATING  AST_PCT AST_TO  AST_RATIO   OREB_PCT    DREB_PCT    REB_PCT TM_TOV_PCT  EFG_PCT TS_PCT  E_PACE  PACE".split()
+
 # Holds information for a column in a Table
 class Attribute:
     def __init__(self, name, type, isNullable=True, isUnique = False,):
@@ -60,6 +61,7 @@ class Table:
             ret += ",".join(self.constraints) + ","
         ret += "PRIMARY KEY ({})".format(self.primaryKey)
         ret += ");"
+        print(ret)
         return ret
 
     # Inserts a new record.  Assumes that all values are provided
@@ -68,7 +70,6 @@ class Table:
         formatValues = []
         for param, val in zip(self.params, values):
             pVal = str(val)
-            #if param.type != "int" and param.type != "timestamp":
             if param.type != "int":
                 pVal = "'{}'".format(pVal)
             if param.type == "timestamp":
@@ -84,7 +85,7 @@ class Table:
 
     # Parses a CSV file and assumes that each row is a record
     def insertFromFile(self, filePath):
-        inputFile = csv.DictReader(open(filePath), delimiter=',')
+        inputFile = csv.DictReader(open(filePath,  encoding='utf-8-sig'), delimiter=',')
         for row in inputFile:
             values = []
             for k in self.csvNames:
@@ -92,17 +93,6 @@ class Table:
             self.insert(values, False)
         self.con.commit()
 
-# Hard coded table for debugging
-class TestTable (Table):
-    def __init__(self, db, con):
-        Table.__init__(self, db, con)
-        self.name = "test"
-        self.params = [Attribute("t4", "varchar(255)")]
-        self.params.append(Attribute("t2", "int"))
-        self.primaryKey = "t4"
-        self.constraints = []
-
-# Coach table
 class CoachTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
@@ -114,20 +104,16 @@ class CoachTable (Table):
         self.constraints = []
         self.csvNames = ["NAME", "EXP", "EXP"]
 
-# Player table
 class PlayerTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
         self.name = "player"
         self.params = [Attribute("p_name", "varchar(255)")]
-        #self.params.append(Attribute("position", "varchar(10)"))
         self.params.append(Attribute("age", "int"))
         self.primaryKey = "p_name"
         self.constraints = []
-        #self.csvNames = ["PLAYER_NAME", "POS", "AGE"]
         self.csvNames = ["PLAYER_NAME", "AGE"]
 
-# Player table
 class TeamTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
@@ -137,7 +123,6 @@ class TeamTable (Table):
         self.constraints = []
         self.csvNames = ["TEAM_NAME"]
 
-# Player table
 class TeamRecordTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
@@ -161,7 +146,6 @@ class TeamRecordTable (Table):
             self.insert(values, False)
         self.con.commit()
 
-# Player table
 class TeamAttTable (TeamRecordTable):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
@@ -174,7 +158,6 @@ class TeamAttTable (TeamRecordTable):
         self.csvNames = ["TEAM", "TOTAL"]
 
 
-# Game table
 class GameTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
@@ -189,7 +172,6 @@ class GameTable (Table):
         self.constraints.append("FOREIGN KEY (away_team) REFERENCES {}.team(t_name)".format(self.schemaName))
         self.csvNames = ["Home Team", "Away Team", "Date", "Result"]
 
-# Game table
 class CoachTeamRelTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
@@ -201,7 +183,6 @@ class CoachTeamRelTable (Table):
         self.constraints.append("FOREIGN KEY (c_name) REFERENCES {}.coach(c_name)".format(self.schemaName))
         self.csvNames = ["NAME", "TEAM"]
 
-# Player Team table
 class PlayerTeamRelTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
@@ -224,14 +205,13 @@ class PlayerTeamRelTable (Table):
                 values.append(row[k])
             self.insert(values, False)
 
-# Player Team table
 class PlayerStatRelTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
         self.name = "playerStatRel"
         self.params = [Attribute("p_name", "varchar(255)")]
         self.params.append(Attribute("player_stat_type", "varchar(255)"))
-        self.params.append(Attribute("statValue", "float(24)"))
+        self.params.append(Attribute("stat_value", "float(24)"))
         self.primaryKey = "p_name,player_stat_type"
         self.constraints = ["FOREIGN KEY (p_name) REFERENCES {}.player(p_name)".format(self.schemaName)]
         self.constraints.append("FOREIGN KEY (player_stat_type) REFERENCES {}.playerstat(player_stat_type)".format(self.schemaName))
@@ -249,14 +229,13 @@ class PlayerStatRelTable (Table):
                 values.append(row[stat])
                 self.insert(values, False)
 
-# Player Team table
 class TeamStatRelTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
         self.name = "teamStatRel"
         self.params = [Attribute("t_name", "varchar(255)")]
         self.params.append(Attribute("team_stat_type", "varchar(255)"))
-        self.params.append(Attribute("statValue", "float(24)"))
+        self.params.append(Attribute("stat_value", "float(24)"))
         self.primaryKey = "t_name,team_stat_type"
         self.constraints = ["FOREIGN KEY (t_name) REFERENCES {}.team(t_name)".format(self.schemaName)]
         self.constraints.append("FOREIGN KEY (team_stat_type) REFERENCES {}.teamstat(team_stat_type)".format(self.schemaName))
@@ -274,7 +253,6 @@ class TeamStatRelTable (Table):
                 values.append(row[stat])
                 self.insert(values, False)
 
-# Player Team table
 class PlayerStatTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
@@ -287,7 +265,6 @@ class PlayerStatTable (Table):
         for stat in playerStats:
             self.insert([stat], False)
 
-# Player Team table
 class TeamStatTable (Table):
     def __init__(self, db, con):
         Table.__init__(self, db, con)
@@ -328,7 +305,6 @@ data[PlayerStatRelTable] = "outplayer.csv"
 data[TeamStatRelTable] = "outteam.csv"
 
 for tableType, fileName in data.items():
-    print(fileName)
     table = tableType(db, con)
     ret = table.create()
     table.insertFromFile("./Outputs/" + fileName)
@@ -361,6 +337,7 @@ END;
 $$ LANGUAGE 'plpgsql'"""
 storeProcedures = [pProcedure, tProcedure]
 for proc in storeProcedures:
+    print(proc)
     db.execute(proc)
     con.commit();
 
