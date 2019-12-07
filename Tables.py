@@ -170,7 +170,7 @@ class GameTable (Table):
         self.primaryKey = "home_team,away_team,date"
         self.constraints = ["FOREIGN KEY (home_team) REFERENCES {}.team(t_name)".format(self.schemaName)]
         self.constraints.append("FOREIGN KEY (away_team) REFERENCES {}.team(t_name)".format(self.schemaName))
-        self.csvNames = ["Home Team", "Away Team", "Date", "Result"]
+        self.csvNames = ["Home Team", "Away Team", "Date", "Location", "Result"]
 
 class CoachTeamRelTable (Table):
     def __init__(self, db, con):
@@ -189,20 +189,21 @@ class PlayerTeamRelTable (Table):
         self.name = "playerTeamRel"
         self.params = [Attribute("t_name", "varchar(255)")]
         self.params.append(Attribute("p_name", "varchar(255)"))
-        self.params.append(Attribute("player_salary", "int"))
         self.primaryKey = "t_name,p_name"
         self.constraints = ["FOREIGN KEY (t_name) REFERENCES {}.team(t_name)".format(self.schemaName)]
         self.constraints.append("FOREIGN KEY (p_name) REFERENCES {}.player(p_name)".format(self.schemaName))
-        self.csvNames = ["Player", "Tm", "season17_18"]
-    # Parses a CSV file and assumes that each row is a record
+        self.csvNames = ["TEAM_ABBREVIATION", "PLAYER_NAME"]
+    
+    # Have to map team abbrivations to team name before uploading
     def insertFromFile(self, filePath):
         inputFile = csv.DictReader(open(filePath), delimiter=',')
         for row in inputFile:
             values = []
             for k in self.csvNames:
-                if k == "Tm":
-                    k = abbribs [k]
-                values.append(row[k])
+                val = row[k]
+                if k == "TEAM_ABBREVIATION":
+                    val = abbribs[val]
+                values.append(val)
             self.insert(values, False)
 
 class PlayerStatRelTable (Table):
@@ -300,6 +301,7 @@ data = {}
 data[TeamRecordTable] = "outteam.csv"
 data[TeamAttTable] = "outnba_team_annual_attendance2018.csv"
 data[GameTable] = "outnbaschedule.csv"
+data[PlayerTeamRelTable] = "outplayer.csv"
 data[CoachTeamRelTable] = "outcoaches.csv"
 data[PlayerStatRelTable] = "outplayer.csv"
 data[TeamStatRelTable] = "outteam.csv"
@@ -319,20 +321,20 @@ RETURNS TABLE(
 )
 AS $$
 BEGIN RETURN QUERY
-    SELECT P_NAME, player_stat_type, ROW_NUMBER() OVER(ORDER BY statvalue DESC) AS Rank from FinalProject.playerstatrel where player_stat_type = STAT and statvalue > 0;
+    SELECT P_NAME, player_stat_type, ROW_NUMBER() OVER(ORDER BY stat_value DESC) AS Rank from FinalProject.playerstatrel where player_stat_type = STAT and stat_value > 0;
 END;
 $$ LANGUAGE 'plpgsql'"""
 
 tProcedure = """
 CREATE OR REPLACE FUNCTION FinalProject.TEAMStatRanker(STAT VARCHAR)
 RETURNS TABLE(
-    player VARCHAR,
+    team VARCHAR,
     statistic VARCHAR,
     rank BIGINT
 )
 AS $$
 BEGIN RETURN QUERY
-    SELECT t_NAME, team_stat_type, ROW_NUMBER() OVER(ORDER BY statvalue DESC) AS Rank from FinalProject.teamStatRel where team_stat_type = STAT and statvalue > 0;
+    SELECT t_NAME, team_stat_type, ROW_NUMBER() OVER(ORDER BY stat_value DESC) AS Rank from FinalProject.teamStatRel where team_stat_type = STAT and stat_value > 0;
 END;
 $$ LANGUAGE 'plpgsql'"""
 storeProcedures = [pProcedure, tProcedure]
